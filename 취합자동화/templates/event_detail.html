@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} - 취합 자동화 시스템{% endblock %}
+
+{% block content %}
+<div class="col-12 p-4">
+  <!-- 브레드크럼 -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">행사 목록</a></li>
+      <li class="breadcrumb-item active">{{ event.name }}</li>
+    </ol>
+  </nav>
+
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-1">
+        {{ event.name }}
+        {% if event.id == active_event_id %}
+          <span class="badge bg-success fs-6 ms-2"><span class="active-badge"></span>감시 중</span>
+        {% elif event.status == "closed" %}
+          <span class="badge bg-secondary fs-6 ms-2">종료됨</span>
+        {% else %}
+          <span class="badge bg-primary fs-6 ms-2">취합 중</span>
+        {% endif %}
+      </h4>
+      {% if event.description %}<p class="text-muted mb-0">{{ event.description }}</p>{% endif %}
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      {% if event.status == "collecting" %}
+        {% if event.id == active_event_id %}
+          <form method="post" action="/events/{{ event.id }}/deactivate" class="d-inline">
+            <button class="btn btn-outline-warning btn-sm"><i class="bi bi-pause-circle me-1"></i>감시 중지</button>
+          </form>
+        {% else %}
+          <form method="post" action="/events/{{ event.id }}/activate" class="d-inline">
+            <button class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle me-1"></i>감시 시작</button>
+          </form>
+        {% endif %}
+        <form method="post" action="/events/{{ event.id }}/scan" class="d-inline">
+          <button class="btn btn-outline-primary btn-sm"><i class="bi bi-search me-1"></i>폴더 즉시 스캔</button>
+        </form>
+        <form method="post" action="/events/{{ event.id }}/close"
+              onsubmit="return confirm('취합을 종료하시겠습니까? 종료 후에는 새 파일이 처리되지 않습니다.')">
+          <button class="btn btn-outline-danger btn-sm"><i class="bi bi-stop-circle me-1"></i>취합 종료</button>
+        </form>
+      {% endif %}
+      <a href="/events/{{ event.id }}/statistics" class="btn btn-primary btn-sm">
+        <i class="bi bi-bar-chart me-1"></i>통계 보기
+      </a>
+    </div>
+  </div>
+
+  <!-- 요약 카드 -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card blue">
+        <div class="number">{{ total }}</div>
+        <div class="label">전체 신청건</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card green">
+        <div class="number">{{ valid }}</div>
+        <div class="label">정상 처리건</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card red">
+        <div class="number">{{ errors }}</div>
+        <div class="label">중복/오류건</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card orange">
+        <div class="number">{{ source_files|length }}</div>
+        <div class="label">처리된 파일 수</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상단 액션 -->
+  {% if errors > 0 %}
+  <div class="alert alert-danger d-flex align-items-center mb-4">
+    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+    <div>
+      <strong>중복/오류 데이터 {{ errors }}건이 있습니다.</strong>
+      담당자 확인 및 수정이 필요합니다.
+      <a href="/events/{{ event.id }}/submissions?filter=error" class="alert-link ms-2">오류 목록 보기 →</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- 처리된 파일 목록 -->
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-file-earmark-excel me-2 text-success"></i>처리된 엑셀 파일</span>
+          <a href="/events/{{ event.id }}/submissions" class="btn btn-sm btn-outline-primary">
+            전체 데이터 보기
+          </a>
+        </div>
+        <div class="card-body p-0">
+          {% if source_files %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>파일명</th>
+                  <th class="text-center">처리건</th>
+                  <th class="text-center">오류</th>
+                  <th class="text-center">상태</th>
+                  <th>처리시각</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in source_files %}
+                <tr>
+                  <td class="small text-break">{{ f.filename }}</td>
+                  <td class="text-center">{{ f.row_count }}</td>
+                  <td class="text-center">
+                    {% if f.error_count > 0 %}
+                    <span class="badge bg-danger">{{ f.error_count }}</span>
+                    {% else %}-{% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if f.status == "ok" %}
+                      <span class="badge bg-success">완료</span>
+                    {% elif f.status == "error" %}
+                      <span class="badge bg-danger" title="{{ f.error_message }}">오류</span>
+                    {% else %}
+                      <span class="badge bg-warning">처리중</span>
+                    {% endif %}
+                  </td>
+                  <td class="small text-muted">{{ f.processed_at.strftime('%m-%d %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-folder2-open fs-3"></i>
+            <p class="mt-2 mb-0">아직 처리된 파일이 없습니다.<br>
+            <small>C:/취합데이터 폴더에 엑셀 파일을 넣으세요.</small></p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 안내 -->
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-header"><i class="bi bi-info-circle me-2 text-primary"></i>사용 안내</div>
+        <div class="card-body">
+          <ol class="small text-muted ps-3 mb-0">
+            <li class="mb-2">임직원들이 엑셀 양식을 작성하여 <strong>네이버 드라이브 취합 폴더</strong>에 업로드합니다.</li>
+            <li class="mb-2">네이버 드라이브가 <strong>C:/취합데이터</strong>로 동기화하면 자동 처리됩니다.</li>
+            <li class="mb-2">중복 사번 데이터는 <span class="badge bg-danger">오류</span>로 분류되며 통계에서 제외됩니다.</li>
+            <li class="mb-2">오류 데이터는 담당자가 직접 수정하거나 제외 처리할 수 있습니다.</li>
+            <li>취합 완료 후 <strong>통계 보기</strong>에서 집계 결과를 확인하세요.</li>
+          </ol>
+          <hr>
+          <div class="small">
+            <div class="d-flex align-items-center mb-1">
+              <i class="bi bi-folder2 me-2 text-primary"></i>
+              <span>감시 폴더: <code>C:/취합데이터</code></span>
+            </div>
+            <div class="d-flex align-items-center">
+              <i class="bi bi-folder-check me-2 text-success"></i>
+              <span>처리 완료: <code>C:/취합데이터/처리완료</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

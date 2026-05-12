@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} - 통계{% endblock %}
+
+{% block content %}
+<div class="col-12 p-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">행사 목록</a></li>
+      <li class="breadcrumb-item"><a href="/events/{{ event.id }}" class="text-decoration-none">{{ event.name }}</a></li>
+      <li class="breadcrumb-item active">통계</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-1">{{ event.name }} 통계</h4>
+      <small class="text-muted">중복/오류 제외 후 정상 처리된 데이터 기준</small>
+    </div>
+    <div class="d-flex gap-2">
+      {% if unresolved_count > 0 %}
+      <a href="/events/{{ event.id }}/submissions?filter=error" class="btn btn-outline-danger btn-sm">
+        미처리 오류 {{ unresolved_count }}건
+      </a>
+      {% endif %}
+      <a href="/events/{{ event.id }}/export" class="btn btn-success btn-sm">엑셀 다운로드</a>
+    </div>
+  </div>
+
+  <!-- 탭 -->
+  <ul class="nav nav-tabs mb-0" style="border-bottom:2px solid #e2e8f0;">
+    <li class="nav-item">
+      <a class="nav-link fw-semibold {% if active_tab != 'grid' %}active{% endif %}"
+         href="/events/{{ event.id }}/statistics?tab=chart">
+        차트 통계
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link fw-semibold {% if active_tab == 'grid' %}active{% endif %}"
+         href="/events/{{ event.id }}/statistics?tab=grid">
+        전체 데이터 조회
+        <span class="badge bg-primary ms-1">{{ total_count }}</span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="pt-4">
+
+    {# ===== 탭1: 차트 통계 ===== #}
+    {% if active_tab != 'grid' %}
+
+    <!-- 요약 카드 -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="stat-card blue"><div class="number">{{ total_count }}</div><div class="label">정상 신청건</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card red"><div class="number">{{ error_count }}</div><div class="label">중복/오류건</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card orange"><div class="number">{{ unresolved_count }}</div><div class="label">미처리 오류</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card green"><div class="number">{{ item1_stats|length }}</div><div class="label">취합사항1 종류</div></div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- 취합사항1 -->
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">취합사항1 현황</div>
+          <div class="card-body">
+            {% if item1_stats %}
+              <canvas id="chart1" height="200"></canvas>
+              <hr>
+              <table class="table table-sm mb-0">
+                <thead><tr><th>항목</th><th class="text-end">인원</th><th class="text-end">비율</th></tr></thead>
+                <tbody>
+                {% for item, cnt in item1_stats %}
+                <tr>
+                  <td>{{ item or '미입력' }}</td>
+                  <td class="text-end fw-bold">{{ cnt }}</td>
+                  <td class="text-end text-muted">{% if total_count > 0 %}{{ "%.1f"|format(cnt/total_count*100) }}%{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            {% else %}<div class="text-center text-muted py-3">데이터 없음</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 취합사항2 -->
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">취합사항2 현황</div>
+          <div class="card-body">
+            {% if item2_stats %}
+              <canvas id="chart2" height="200"></canvas>
+              <hr>
+              <table class="table table-sm mb-0">
+                <thead><tr><th>항목</th><th class="text-end">인원</th><th class="text-end">비율</th></tr></thead>
+                <tbody>
+                {% for item, cnt in item2_stats %}
+                <tr>
+                  <td>{{ item or '미입력' }}</td>
+                  <td class="text-end fw-bold">{{ cnt }}</td>
+                  <td class="text-end text-muted">{% if total_count > 0 %}{{ "%.1f"|format(cnt/total_count*100) }}%{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            {% else %}<div class="text-center text-muted py-3">데이터 없음</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 취합사항3 -->
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header fw-semibold">취합사항3 현황</div>
+          <div class="card-body">
+            {% if item3_stats %}
+              <canvas id="chart3" height="200"></canvas>
+              <hr>
+              <table class="table table-sm mb-0">
+                <thead><tr><th>항목</th><th class="text-end">인원</th><th class="text-end">비율</th></tr></thead>
+                <tbody>
+                {% for item, cnt in item3_stats %}
+                <tr>
+                  <td>{{ item or '미입력' }}</td>
+                  <td class="text-end fw-bold">{{ cnt }}</td>
+                  <td class="text-end text-muted">{% if total_count > 0 %}{{ "%.1f"|format(cnt/total_count*100) }}%{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            {% else %}<div class="text-center text-muted py-3">데이터 없음</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- 교차 통계 -->
+      {% if combo_stats %}
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header fw-semibold">취합사항1 × 취합사항2 교차 통계</div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead><tr><th>취합사항1</th><th>취합사항2</th><th class="text-center">인원수</th><th style="min-width:180px">비율</th></tr></thead>
+                <tbody>
+                {% for i1, i2, cnt in combo_stats %}
+                <tr>
+                  <td>{{ i1 or '-' }}</td>
+                  <td>{{ i2 or '-' }}</td>
+                  <td class="text-center fw-bold">{{ cnt }}</td>
+                  <td>
+                    {% if total_count > 0 %}
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height:8px">
+                        <div class="progress-bar bg-primary" style="width:{{ (cnt/total_count*100)|round }}%"></div>
+                      </div>
+                      <small class="text-muted" style="min-width:42px">{{ "%.1f"|format(cnt/total_count*100) }}%</small>
+                    </div>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% endif %}{# end chart tab #}
+
+
+    {# ===== 탭2: 전체 데이터 그리드 ===== #}
+    {% if active_tab == 'grid' %}
+
+    <!-- 검색 조건 -->
+    <div class="card mb-3">
+      <div class="card-body py-3">
+        <form method="get" action="/events/{{ event.id }}/statistics">
+          <input type="hidden" name="tab" value="grid">
+          <input type="hidden" name="page" value="1">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+              <label class="form-label form-label-sm fw-semibold mb-1">사번</label>
+              <input type="text" name="q_emp" class="form-control form-control-sm"
+                     placeholder="사번 검색" value="{{ q_emp }}">
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label form-label-sm fw-semibold mb-1">이름</label>
+              <input type="text" name="q_name" class="form-control form-control-sm"
+                     placeholder="이름 검색" value="{{ q_name }}">
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label form-label-sm fw-semibold mb-1">취합건 (사항1/2/3 통합)</label>
+              <input type="text" name="q_item" class="form-control form-control-sm"
+                     placeholder="취합사항 검색" value="{{ q_item }}">
+            </div>
+            <div class="col-12 col-md-3">
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1">조회</button>
+                <a href="/events/{{ event.id }}/statistics?tab=grid" class="btn btn-outline-secondary btn-sm">초기화</a>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 결과 카운트 -->
+    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+      <span class="small text-muted">
+        총 <strong class="text-primary fs-6">{{ grid_total }}</strong>건
+        {% if q_emp or q_name or q_item %}
+        <span class="badge bg-warning text-dark ms-2">필터 적용 중</span>
+        {% endif %}
+      </span>
+      <span class="small text-muted">{{ page }} / {{ grid_total_pages }} 페이지</span>
+    </div>
+
+    <!-- 그리드 -->
+    <div class="card">
+      <div class="card-body p-0">
+        {% if grid_data %}
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="text-center" style="width:52px">No.</th>
+                <th style="min-width:100px">사번</th>
+                <th style="min-width:80px">이름</th>
+                <th style="min-width:130px">전화번호</th>
+                <th style="min-width:130px">취합사항1</th>
+                <th style="min-width:130px">취합사항2</th>
+                <th style="min-width:130px">취합사항3</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% set row_offset = (page - 1) * 50 %}
+            {% for sub in grid_data %}
+            <tr>
+              <td class="text-center text-muted small">{{ row_offset + loop.index }}</td>
+              <td><span class="badge bg-light text-dark border font-monospace">{{ sub.employee_id }}</span></td>
+              <td class="fw-semibold">{{ sub.name }}</td>
+              <td class="text-muted small">{{ sub.phone or '-' }}</td>
+              <td>{% if sub.item1 %}<span class="badge rounded-pill" style="background:#dbeafe;color:#1e40af;font-size:.85em">{{ sub.item1 }}</span>{% else %}-{% endif %}</td>
+              <td>{% if sub.item2 %}<span class="badge rounded-pill" style="background:#dcfce7;color:#166534;font-size:.85em">{{ sub.item2 }}</span>{% else %}-{% endif %}</td>
+              <td>{% if sub.item3 %}<span class="badge rounded-pill" style="background:#fef3c7;color:#92400e;font-size:.85em">{{ sub.item3 }}</span>{% else %}-{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if grid_total_pages > 1 %}
+        <div class="d-flex justify-content-center py-3 border-top">
+          <nav>
+            <ul class="pagination pagination-sm mb-0">
+              {% if page > 1 %}
+              <li class="page-item">
+                <a class="page-link" href="?tab=grid&q_emp={{ q_emp }}&q_name={{ q_name }}&q_item={{ q_item }}&page={{ page - 1 }}">이전</a>
+              </li>
+              {% endif %}
+              {% for p in range([1, page-2]|max, [grid_total_pages+1, page+3]|min) %}
+              <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?tab=grid&q_emp={{ q_emp }}&q_name={{ q_name }}&q_item={{ q_item }}&page={{ p }}">{{ p }}</a>
+              </li>
+              {% endfor %}
+              {% if page < grid_total_pages %}
+              <li class="page-item">
+                <a class="page-link" href="?tab=grid&q_emp={{ q_emp }}&q_name={{ q_name }}&q_item={{ q_item }}&page={{ page + 1 }}">다음</a>
+              </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <div style="font-size:2.5rem">&#128269;</div>
+          <p class="mt-2 mb-0">
+            {% if q_emp or q_name or q_item %}
+              검색 결과가 없습니다. 조건을 변경해 보세요.
+            {% else %}
+              정상 처리된 데이터가 없습니다.
+            {% endif %}
+          </p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% endif %}{# end grid tab #}
+
+  </div>{# /pt-4 #}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#0d9488'];
+
+function makeChart(id, labels, data) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const total = data.reduce((a,b)=>a+b,0);
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: COLORS, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed}명 (${total?(ctx.parsed/total*100).toFixed(1):0}%)`
+          }
+        }
+      },
+      cutout: '55%'
+    }
+  });
+}
+
+{% if active_tab != 'grid' %}
+{% if item1_stats %}
+makeChart('chart1',
+  [{% for item, cnt in item1_stats %}'{{ item or "미입력" }}',{% endfor %}],
+  [{% for item, cnt in item1_stats %}{{ cnt }},{% endfor %}]
+);
+{% endif %}
+{% if item2_stats %}
+makeChart('chart2',
+  [{% for item, cnt in item2_stats %}'{{ item or "미입력" }}',{% endfor %}],
+  [{% for item, cnt in item2_stats %}{{ cnt }},{% endfor %}]
+);
+{% endif %}
+{% if item3_stats %}
+makeChart('chart3',
+  [{% for item, cnt in item3_stats %}'{{ item or "미입력" }}',{% endfor %}],
+  [{% for item, cnt in item3_stats %}{{ cnt }},{% endfor %}]
+);
+{% endif %}
+{% endif %}
+</script>
+{% endblock %}

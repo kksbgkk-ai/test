@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} - 데이터 목록{% endblock %}
+
+{% block content %}
+<div class="col-12 p-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">행사 목록</a></li>
+      <li class="breadcrumb-item"><a href="/events/{{ event.id }}" class="text-decoration-none">{{ event.name }}</a></li>
+      <li class="breadcrumb-item active">데이터 목록</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="fw-bold mb-0">{{ event.name }} - 신청 데이터</h5>
+    {% if unresolved > 0 %}
+    <span class="badge bg-danger fs-6"><i class="bi bi-exclamation-triangle me-1"></i>미처리 오류 {{ unresolved }}건</span>
+    {% endif %}
+  </div>
+
+  <!-- 필터 탭 -->
+  <ul class="nav filter-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link {% if filter == 'all' %}active{% endif %}" href="?filter=all">
+        전체 <span class="badge bg-secondary ms-1">{{ total if filter == 'all' else '' }}</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if filter == 'error' %}active{% endif %} {% if error_count > 0 %}text-danger{% endif %}" href="?filter=error">
+        <i class="bi bi-exclamation-triangle me-1"></i>중복/오류
+        {% if error_count > 0 %}<span class="badge bg-danger ms-1">{{ error_count }}</span>{% endif %}
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if filter == 'valid' %}active{% endif %}" href="?filter=valid">
+        <i class="bi bi-check-circle me-1"></i>정상 데이터
+      </a>
+    </li>
+  </ul>
+
+  <div class="card">
+    <div class="card-body p-0">
+      {% if submissions %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>사번</th>
+              <th>이름</th>
+              <th>전화번호</th>
+              <th>취합사항1</th>
+              <th>취합사항2</th>
+              <th>취합사항3</th>
+              <th class="text-center">상태</th>
+              <th class="text-center">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sub in submissions %}
+            <tr class="{% if sub.is_error %}error-row{% endif %}">
+              <td class="fw-semibold">{{ sub.employee_id }}</td>
+              <td>{{ sub.name }}</td>
+              <td class="text-muted small">{{ sub.phone or '-' }}</td>
+              <td>{{ sub.item1 or '-' }}</td>
+              <td>{{ sub.item2 or '-' }}</td>
+              <td>{{ sub.item3 or '-' }}</td>
+              <td class="text-center">
+                {% if sub.is_excluded %}
+                  <span class="badge bg-secondary" title="통계 제외">제외</span>
+                {% elif sub.is_error %}
+                  <span class="badge bg-danger" title="{{ sub.error_reason }}">
+                    {% if sub.is_duplicate %}중복{% else %}오류{% endif %}
+                  </span>
+                {% else %}
+                  <span class="badge bg-success">정상</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center">
+                  <a href="/submissions/{{ sub.id }}/edit" class="btn btn-xs btn-outline-primary" title="수정">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  {% if sub.is_error and not sub.is_excluded %}
+                  <form method="post" action="/submissions/{{ sub.id }}/exclude"
+                        onsubmit="return confirm('이 데이터를 통계에서 제외하시겠습니까?')">
+                    <button class="btn btn-xs btn-outline-danger" title="통계 제외">
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+                  </form>
+                  {% elif sub.is_excluded %}
+                  <form method="post" action="/submissions/{{ sub.id }}/include"
+                        onsubmit="return confirm('이 데이터를 통계에 다시 포함하시겠습니까?')">
+                    <button class="btn btn-xs btn-outline-success" title="통계 포함">
+                      <i class="bi bi-check-circle"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% if sub.is_error and sub.error_reason %}
+            <tr class="error-row">
+              <td colspan="8" class="py-1">
+                <small class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>{{ sub.error_reason }}</small>
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 페이지네이션 -->
+      {% if total_pages > 1 %}
+      <div class="d-flex justify-content-center py-3">
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            {% for p in range(1, total_pages + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link" href="?filter={{ filter }}&page={{ p }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-3"></i>
+        <p class="mt-2">해당 조건의 데이터가 없습니다.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.btn-xs { padding: .2rem .4rem; font-size: .75rem; }
+</style>
+{% endblock %}
